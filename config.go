@@ -3,13 +3,14 @@ package kfk
 import (
 	"fmt"
 	auxlib2 "github.com/vela-ssoc/vela-kit/auxlib"
-	"github.com/vela-ssoc/vela-kit/pipe"
 	"github.com/vela-ssoc/vela-kit/lua"
+	"github.com/vela-ssoc/vela-kit/pipe"
 	vswitch "github.com/vela-ssoc/vela-switch"
 	"go.uber.org/ratelimit"
 )
 
 type config struct {
+	proxy       bool
 	name        string            //consumer, producer name
 	compression string            //producer compression
 	balancer    string            //producer balancer
@@ -21,7 +22,7 @@ type config struct {
 	topics      []string          //consumer: group topics , producer: topics[0]
 	groupID     string            //consumer gorup id
 	thread      int               //consumer thread
-	pipe        *pipe.Px
+	pipe        *pipe.Chains
 	vsh         *vswitch.Switch
 	output      []lua.Writer
 	co          *lua.LState
@@ -65,6 +66,8 @@ func (cfg *config) NewIndex(L *lua.LState, key string, val lua.LValue) {
 		cfg.ack = val.String()
 	case "timeout":
 		cfg.timeout = lua.CheckInt(L, val)
+	case "proxy":
+		cfg.proxy = lua.CheckBool(L, val)
 	case "topic":
 		switch val.Type() {
 		case lua.LTString:

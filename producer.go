@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/segmentio/kafka-go"
 	"github.com/vela-ssoc/vela-kit/lua"
+	"github.com/vela-ssoc/vela-kit/proxy"
+	"net"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -84,6 +86,16 @@ func (p *Producer) withAck() {
 	}
 }
 
+func (p *Producer) ProxyTransport() *kafka.Transport {
+	return &kafka.Transport{
+		Dial: func(ctx context.Context, network string, addr string) (net.Conn, error) {
+			pxy := proxy.New(fmt.Sprintf("%s://%s", network, addr))
+			return pxy.Dail(ctx)
+		},
+		DialTimeout: 30 * time.Second,
+	}
+}
+
 func (p *Producer) Start() error {
 	ctx, fn := context.WithCancel(context.Background())
 	p.ctx = ctx
@@ -93,6 +105,11 @@ func (p *Producer) Start() error {
 		Addr:     kafka.TCP(p.cfg.addr...),
 		Balancer: &kafka.LeastBytes{},
 	}
+
+	if p.cfg.proxy {
+		p.w.Transport = p.ProxyTransport()
+	}
+
 	p.withAck()
 	p.withTimeout()
 	p.withAsync()
